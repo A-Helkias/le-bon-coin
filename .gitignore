@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+.env.local
+
+# Claude Code
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Playwright MCP (captures de verification)
+.playwright-mcp/
+
+# Env (variantes Vite non couvertes ci-dessus)
+.env.*.local
+
+# Claude Code (mémoire de session, jamais versionnée)
+.claude/agent-memory/
+
+# Secrets
+*.pem
+*.key

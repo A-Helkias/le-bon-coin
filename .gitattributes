@@ -1,0 +1,20 @@
+# Normalise les fins de ligne pour tout le monde, quel que soit l'OS et la
+# config locale de core.autocrlf : le dépôt stocke du LF, Git ne convertit
+# rien à la sortie.
+* text=auto eol=lf
+
+# Les scripts shell doivent rester en LF, y compris sous Windows, sinon
+# `sh` (Git Bash) refuse de les exécuter.
+*.sh text eol=lf
+
+# Texte, mais explicite pour éviter toute ambiguïté avec les formats binaires
+# ci-dessous.
+*.svg text eol=lf
+
+# Binaires : jamais de conversion de fin de ligne, jamais de diff textuel.
+*.woff binary
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
