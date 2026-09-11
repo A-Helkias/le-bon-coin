@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import api_router
 from app.core.config import settings
@@ -52,3 +55,34 @@ for error_type in _STATUS_BY_ERROR:
 async def health() -> dict[str, str]:
     """Liveness probe, used by the Docker healthcheck and by CI."""
     return {"status": "ok"}
+
+
+# --- Frontend statique -------------------------------------------------------
+# Présent seulement dans l'image : en développement, Vite sert le frontend.
+
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+# Segments que le catch-all ne doit jamais servir, sinon GET /products/ renvoie
+# index.html en 200 au lieu d'un 404. À compléter à chaque nouveau routeur.
+_API_SEGMENTS = frozenset(
+    {"products", "carts", "orders", "health", "docs", "redoc", "openapi.json"}
+)
+
+if _STATIC_DIR.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_STATIC_DIR / "assets"),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str) -> FileResponse:
+        """Serve a built asset, or index.html so react-router handles the route."""
+        if full_path.split("/", 1)[0] in _API_SEGMENTS:
+            raise NotFoundError("Cette ressource n'existe pas.")
+
+        candidate = (_STATIC_DIR / full_path).resolve()
+        # A crafted path such as ../../etc/passwd must not escape the build.
+        if full_path and candidate.is_file() and candidate.is_relative_to(_STATIC_DIR):
+            return FileResponse(candidate)
+        return FileResponse(_STATIC_DIR / "index.html")
