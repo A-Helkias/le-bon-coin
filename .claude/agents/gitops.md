@@ -13,8 +13,8 @@ Deux branches permanentes, et elles sont **déployées automatiquement**. C'est 
 
 | Branche | Rôle | Ce qu'un push y déclenche |
 |---|---|---|
-| `main` | **production** | `.github/workflows/api_cd_pd.yml` — image `prod-<sha>`, déploiement sur le service Cloud Run `le-bon-coin-prod`, environnement GitHub `production` qui peut exiger une approbation humaine |
-| `dev` | **intégration** | `.github/workflows/api_cd_dev.yml` — image `dev-<sha>`, déploiement sur `le-bon-coin-dev`, environnement GitHub `dev` |
+| `main` | **production** | `.github/workflows/api_cd_pd.yml` — image `prod-<sha>` publiée sur `ghcr.io`, déploiement Render via son API, environnement GitHub `production` qui peut exiger une approbation humaine. Puis `release.yml` pose le tag de version et publie la release. |
+| `dev` | **intégration** | `.github/workflows/api_cd_dev.yml` — image `dev-<sha>` publiée sur `ghcr.io`, déploiement Render, environnement GitHub `dev` |
 
 Toutes les autres branches sont éphémères : `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, nommées en anglais.
 
@@ -37,6 +37,37 @@ Trois règles en découlent, et elles ne souffrent aucune exception :
 1. **Une branche de travail part de `dev`**, jamais de `main`. Partir de `main` fait repartir d'un état antérieur à ce qui est déjà intégré.
 2. **Rien n'entre dans `dev` autrement que par une PR.** Pas de commit direct, pas de fusion en local poussée ensuite. La PR est le point où la relecture et la CI ont lieu ; la contourner, c'est déployer du code que personne n'a relu.
 3. **Rien n'entre dans `main` autrement qu'une PR depuis `dev`.** `main` ne reçoit pas de branche de travail directement : la promotion se fait par lots, sur un état déjà éprouvé en dev.
+
+### Stratégies de fusion
+
+| Fusion | Stratégie |
+|---|---|
+| branche de travail → `dev` | **squash** — « 14 commits dont 6 de correction » devient une entrée lisible |
+| `dev` → `main` | **merge commit** — jamais de squash |
+
+Le merge commit sur la promotion n'est pas une préférence de style. Un squash donnerait à `main` un commit dont le SHA n'existe pas dans `dev` : les deux branches divergeraient aussitôt, et chaque promotion suivante repartirait en conflit.
+
+### La contrepartie de la discipline
+
+Il n'y a **pas de branche `hotfix/`**. Un correctif de production part de `dev` comme tout le reste, et n'atteint `main` qu'en emportant ce que `dev` contient au même moment.
+
+Ce choix n'est tenable qu'à une condition, et elle fait partie de la règle : **`dev` reste livrable en permanence**. Branches courtes, fusionnées vite. Un travail qui doit rester en cours longtemps reste sur sa branche ou passe derrière un drapeau de fonctionnalité — jamais en attente dans `dev`, où il prendrait en otage le prochain correctif urgent.
+
+### Version et release
+
+La version est **calculée** à partir des messages de commit, jamais écrite à la main. `semantic-release` s'exécute sur `main` après chaque promotion et pose le tag.
+
+| Ce que contient la promotion | Version |
+|---|---|
+| au moins un `feat` | mineure |
+| des `fix` ou `perf` seulement | corrective |
+| un `!` après le scope, ou `BREAKING CHANGE` en pied | majeure |
+| uniquement `chore`, `docs`, `ci`, `test`, `refactor` | **aucune release, aucun tag** |
+
+Deux conséquences à connaître :
+
+- Le **tag git fait foi**. `backend/pyproject.toml` et `frontend/package.json` ne sont pas synchronisés : les mettre à jour exigerait un commit automatique sur `main`, ce que la règle interdit. Ne te fie pas au numéro qu'ils affichent.
+- Le changelog est publié en **GitHub Release**, pas dans un fichier du dépôt. Rien n'est à commiter pour lui.
 
 ### Ce que cela t'interdit
 
@@ -120,6 +151,7 @@ Liste fermée elle aussi. Un scope inventé au cas par cas rend le filtrage inut
 | `tooling` | `.claude/`, hooks, règles, skills |
 | `ci` | workflows GitHub Actions |
 | `docker` | images et composition |
+| `iac` | Terraform et provisionnement d'infrastructure |
 
 Le scope est **obligatoire**. Si aucun ne convient, c'est le signe que le commit mélange deux intentions : le découper.
 

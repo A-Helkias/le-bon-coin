@@ -1,0 +1,56 @@
+# Versionnage et changelog — déclenché à chaque promotion de `dev` vers `main`.
+#
+# La version est calculée à partir des messages de commit, jamais écrite à la
+# main : `feat` incrémente le mineur, `fix` et `perf` le correctif, un
+# `BREAKING CHANGE` le majeur. Une promotion qui ne contient que du `chore`,
+# `docs`, `ci`, `test` ou `refactor` ne produit ni tag ni release, et c'est le
+# comportement attendu.
+#
+# Aucun fichier n'est commité par ce workflow : le greffon `@semantic-release/git`
+# est délibérément absent de `.releaserc.json`, parce qu'il pousserait un commit
+# sur `main` — ce que la règle du projet interdit. Le changelog vit donc dans la
+# GitHub Release, et le tag porte la version.
+#
+# Pas de filtre `paths` : une promotion mérite son tag quoi qu'elle touche.
+
+name: "Release"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Créer le tag et la release.
+      contents: write
+      # Commenter les issues et PR incluses dans la release.
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # semantic-release lit l'historique complet pour trouver le dernier
+          # tag ; un clone superficiel lui ferait recalculer depuis zéro.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Version et release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx --yes \
+            -p semantic-release@24 \
+            -p @semantic-release/commit-analyzer \
+            -p @semantic-release/release-notes-generator \
+            -p @semantic-release/github \
+            -p conventional-changelog-conventionalcommits@8 \
+            semantic-release
