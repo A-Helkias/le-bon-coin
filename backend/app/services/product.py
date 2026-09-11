@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AlreadyExistsError, NotFoundError
 from app.models import Product
 from app.repositories import product as product_repo
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import ProductCreate, ProductSort, ProductUpdate
 
 
 async def get_product(db: AsyncSession, product_id: UUID) -> Product:
@@ -27,12 +27,33 @@ async def list_products(
     limit: int,
     offset: int,
     include_inactive: bool = False,
+    search: str | None = None,
+    category: str | None = None,
+    sort: ProductSort = ProductSort.RECENT,
 ) -> tuple[Sequence[Product], int]:
     products = await product_repo.list_all(
-        db, limit=limit, offset=offset, include_inactive=include_inactive
+        db,
+        limit=limit,
+        offset=offset,
+        include_inactive=include_inactive,
+        search=search,
+        category=category,
+        sort=sort,
     )
-    total = await product_repo.count(db, include_inactive=include_inactive)
+    # Same filters, deliberately repeated: a `total` computed on a different set
+    # than the one listed makes the pagination lie.
+    total = await product_repo.count(
+        db,
+        include_inactive=include_inactive,
+        search=search,
+        category=category,
+    )
     return products, total
+
+
+async def list_categories(db: AsyncSession) -> Sequence[str]:
+    """The shop's aisles, as they exist in the catalogue."""
+    return await product_repo.list_categories(db)
 
 
 async def create_product(db: AsyncSession, data: ProductCreate) -> Product:

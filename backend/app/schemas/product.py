@@ -1,13 +1,23 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ProductSort(StrEnum):
+    """Catalogue orderings. FastAPI rejects anything else with a 422."""
+
+    RECENT = "recent"
+    PRICE_ASC = "price_asc"
+    PRICE_DESC = "price_desc"
 
 
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=32)
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
+    category: str | None = Field(default=None, max_length=50)
     image_url: str | None = Field(default=None, max_length=500)
     price_cents: int = Field(ge=0)
     stock: int = Field(default=0, ge=0)
@@ -18,6 +28,7 @@ class ProductUpdate(BaseModel):
     sku: str | None = Field(default=None, min_length=1, max_length=32)
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
+    category: str | None = Field(default=None, max_length=50)
     image_url: str | None = Field(default=None, max_length=500)
     price_cents: int | None = Field(default=None, ge=0)
     stock: int | None = Field(default=None, ge=0)
@@ -31,6 +42,7 @@ class ProductRead(BaseModel):
     sku: str
     name: str
     description: str | None
+    category: str | None
     image_url: str | None
     price_cents: int
     stock: int

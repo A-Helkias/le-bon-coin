@@ -173,3 +173,119 @@ async def test_product_without_image_reads_back_as_null(
 
     assert response.status_code == 200
     assert response.json()["image_url"] is None
+
+
+async def test_search_matches_the_name(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(name="Chaise en chêne")
+    await product_factory(name="Table basse")
+
+    response = await client.get("/products", params={"q": "chaise"})
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["name"] == "Chaise en chêne"
+
+
+async def test_search_matches_the_reference(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(sku="LUM-042")
+    await product_factory(sku="TAB-007")
+
+    response = await client.get("/products", params={"q": "lum"})
+
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["sku"] == "LUM-042"
+
+
+async def test_search_without_result_returns_an_empty_page(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(name="Chaise en chêne")
+
+    response = await client.get("/products", params={"q": "aspirateur"})
+
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 0}
+
+
+async def test_total_counts_the_filtered_set_not_the_catalogue(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    """The classic bug: items filtered, total computed on everything."""
+    await product_factory(name="Chaise en chêne")
+    await product_factory(name="Table basse")
+    await product_factory(name="Tabouret")
+
+    response = await client.get("/products", params={"q": "table"})
+
+    body = response.json()
+    assert body["total"] == len(body["items"]) == 1
+
+
+async def test_filter_by_category(client: AsyncClient, product_factory: ProductFactory) -> None:
+    await product_factory(category="Assises")
+    await product_factory(category="Assises")
+    await product_factory(category="Tables")
+
+    response = await client.get("/products", params={"category": "Assises"})
+
+    assert response.json()["total"] == 2
+
+
+async def test_sort_by_price_ascending(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(price_cents=3000)
+    await product_factory(price_cents=1000)
+    await product_factory(price_cents=2000)
+
+    response = await client.get("/products", params={"sort": "price_asc"})
+
+    prices = [item["price_cents"] for item in response.json()["items"]]
+    assert prices == [1000, 2000, 3000]
+
+
+async def test_sort_by_price_descending(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(price_cents=3000)
+    await product_factory(price_cents=1000)
+
+    response = await client.get("/products", params={"sort": "price_desc"})
+
+    prices = [item["price_cents"] for item in response.json()["items"]]
+    assert prices == [3000, 1000]
+
+
+async def test_unknown_sort_is_rejected(client: AsyncClient) -> None:
+    response = await client.get("/products", params={"sort": "cheapest"})
+
+    assert response.status_code == 422
+
+
+async def test_categories_lists_the_aisles(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(category="Tables")
+    await product_factory(category="Assises")
+    await product_factory(category="Assises")
+    await product_factory(category=None)
+
+    response = await client.get("/products/categories")
+
+    assert response.status_code == 200
+    assert response.json() == ["Assises", "Tables"]
+
+
+async def test_categories_ignores_products_off_sale(
+    client: AsyncClient, product_factory: ProductFactory
+) -> None:
+    await product_factory(category="Tables")
+    await product_factory(category="Luminaires", is_active=False)
+
+    response = await client.get("/products/categories")
+
+    assert response.json() == ["Tables"]
