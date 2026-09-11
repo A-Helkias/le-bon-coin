@@ -2,7 +2,8 @@ import { Link, useParams } from 'react-router'
 
 import Availability from '../features/catalog/Availability'
 import ProductPlate from '../features/catalog/ProductPlate'
-import { useAddToCart, useProduct } from '../features/catalog/api'
+import { useAddToCart } from '../features/cart/api'
+import { useProduct } from '../features/catalog/api'
 import { formatPrice } from '../lib/format'
 
 export default function ProductPage() {
