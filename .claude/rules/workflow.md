@@ -22,8 +22,11 @@ Une tâche n'est pas terminée parce que le code est écrit. Elle est terminée 
 
 ## Git
 
-- Une branche par fonctionnalité, nommée en anglais : `feat/product-catalog`, `fix/cart-total`.
-- Jamais de commit direct sur `main`.
+- Deux branches permanentes, **toutes deux déployées automatiquement** : `main` est la production, `dev` l'intégration. Un push sur l'une ou l'autre part en ligne.
+- Une branche par fonctionnalité, nommée en anglais (`feat/product-catalog`, `fix/cart-total`), créée **depuis `dev`**.
+- Jamais de commit direct sur `main` ni sur `dev`.
+- Une branche de travail rejoint `dev` **par une pull request**, jamais autrement : c'est là qu'ont lieu la relecture et la CI.
+- `dev` est promue vers `main` par une pull request de promotion, sur un état déjà éprouvé en dev. Aucune branche de travail ne vise `main` directement.
 - Messages de commit au format Conventional Commits, `type(scope): description`, la description en français à l'impératif : « feat(api): ajoute le endpoint de détail produit ». Les types et scopes admis sont listés dans `.claude/agents/gitops.md`, et la liste est fermée.
 - Ne commite et ne pousse que si on te le demande explicitement.
 

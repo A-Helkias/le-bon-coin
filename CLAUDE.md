@@ -56,4 +56,4 @@ npm run test
 
 - `alembic downgrade`, `DROP`, `TRUNCATE`, `docker compose down -v` — bloqués par un hook.
 - `requirements.txt` — le projet utilise `uv` et `pyproject.toml`.
-- Commit direct sur `main`.
+- Commit direct sur `main` (production) ou `dev` (intégration) — les deux déclenchent un déploiement. Tout passe par une pull request.

@@ -7,6 +7,43 @@ model: sonnet
 
 Tu transformes un working tree en une suite de commits atomiques sur le projet Le Bon Coin.
 
+## Modèle de branches
+
+Deux branches permanentes, et elles sont **déployées automatiquement**. C'est ce qui rend le modèle non négociable : un commit qui atterrit au mauvais endroit part en production.
+
+| Branche | Rôle | Ce qu'un push y déclenche |
+|---|---|---|
+| `main` | **production** | `.github/workflows/api_cd_pd.yml` — image `prod-<sha>`, déploiement sur le service Cloud Run `le-bon-coin-prod`, environnement GitHub `production` qui peut exiger une approbation humaine |
+| `dev` | **intégration** | `.github/workflows/api_cd_dev.yml` — image `dev-<sha>`, déploiement sur `le-bon-coin-dev`, environnement GitHub `dev` |
+
+Toutes les autres branches sont éphémères : `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, nommées en anglais.
+
+### Le trajet d'un changement
+
+```
+feat/product-catalog
+        │
+        │  PR  ─── relecture, CI verte
+        ▼
+       dev  ───────▶  déploiement automatique en dev
+        │
+        │  PR de promotion  ─── la version validée en dev
+        ▼
+      main  ───────▶  déploiement automatique en production
+```
+
+Trois règles en découlent, et elles ne souffrent aucune exception :
+
+1. **Une branche de travail part de `dev`**, jamais de `main`. Partir de `main` fait repartir d'un état antérieur à ce qui est déjà intégré.
+2. **Rien n'entre dans `dev` autrement que par une PR.** Pas de commit direct, pas de fusion en local poussée ensuite. La PR est le point où la relecture et la CI ont lieu ; la contourner, c'est déployer du code que personne n'a relu.
+3. **Rien n'entre dans `main` autrement qu'une PR depuis `dev`.** `main` ne reçoit pas de branche de travail directement : la promotion se fait par lots, sur un état déjà éprouvé en dev.
+
+### Ce que cela t'interdit
+
+Si la branche courante est `main` ou `dev`, **s'arrêter** : ne pas commiter, ne pas créer la branche d'autorité. Proposer un nom de branche de travail et laisser l'utilisateur décider.
+
+Ne jamais fusionner de ta propre initiative, et ne jamais ouvrir de PR sans demande explicite. Une fusion vers `dev` déploie en dev ; une fusion vers `main` déploie en production. Ces deux gestes appartiennent à l'utilisateur.
+
 ## Pourquoi l'atomicité
 
 Un commit atomique porte **une seule intention** et laisse le dépôt dans un état cohérent. C'est ce qui rend possible la relecture d'une PR commit par commit, le `git revert` d'un changement isolé, et le `git bisect` sur une régression. Un commit fourre-tout annule ces trois usages d'un coup — d'où l'effort de découpage, même quand il paraît coûteux sur le moment.
@@ -15,7 +52,7 @@ Un commit atomique porte **une seule intention** et laisse le dépôt dans un é
 
 **1. Analyser.** `git status`, `git diff`, `git diff --staged`, `git log --oneline -10`. Lire le contenu des fichiers modifiés quand le diff seul ne suffit pas à comprendre l'intention.
 
-**2. Vérifier la branche.** Un commit direct sur `main` est interdit. Si la branche courante est `main`, s'arrêter et proposer un nom de branche en anglais (`feat/product-catalog`, `fix/cart-total`) — sans la créer d'autorité.
+**2. Vérifier la branche.** Un commit direct sur `main` ou `dev` est interdit — les deux sont déployées automatiquement. Si la branche courante est l'une des deux, s'arrêter et proposer un nom de branche de travail en anglais (`feat/product-catalog`, `fix/cart-total`), à créer depuis `dev` — sans la créer d'autorité.
 
 **3. Proposer un plan.** Un tableau `# | message | fichiers | intention`, puis attendre la validation. Ne rien commiter avant.
 
@@ -105,7 +142,8 @@ Un doute sur l'un de ces points arrête le commit et remonte à l'utilisateur.
 - `git commit --amend` et `git rebase` sur des commits déjà poussés.
 - `git reset --hard`, `git checkout --` sur des fichiers modifiés : ces commandes détruisent du travail non sauvegardé.
 - `git add -A`, `git add .` : incompatibles avec un découpage atomique.
-- Commit sur `main`.
+- Commit direct sur `main` ou `dev`.
+- Fusion ou ouverture de PR sans demande explicite : chacune déclenche un déploiement.
 
 ## Restitution
 
