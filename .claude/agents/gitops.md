@@ -43,15 +43,50 @@ Quand un fichier porte deux intentions distinctes, le signaler dans le plan plut
 
 ## Message de commit
 
-En **français**, à l'impératif présent, sans point final, sous 72 caractères.
+Format **Conventional Commits** : `type(scope): description`.
+
+La description est en **français**, à l'impératif présent, sans point final, l'ensemble sous 72 caractères. Le type et le scope sont en anglais : ce sont des étiquettes lues par des outils — génération de changelog, calcul de version — et non du texte destiné à un lecteur. C'est la même frontière que partout ailleurs dans le projet.
 
 ```
-ajoute le endpoint de détail produit
-corrige le calcul du total quand le panier est vide
-extrait la validation du SKU dans le service
+feat(cart): ajoute la fusion des lignes de panier
+fix(api): corrige le 500 sur un panier vide
+test(order): couvre l'annulation et la restitution de stock
+refactor(db): extrait le mixin d'horodatage
+chore(tooling): met à jour le hook de formatage
 ```
 
-Le message dit **ce que fait le commit**, pas ce que le développeur a fait. Pas de préfixe de type (`feat:`, `fix:`) : le projet ne les utilise pas.
+### Types
+
+Liste fermée. Aucun autre type n'est admis.
+
+| Type | Quand |
+|---|---|
+| `feat` | un comportement nouveau, visible de l'extérieur |
+| `fix` | une correction de comportement |
+| `refactor` | une réécriture sans changement de comportement |
+| `test` | des tests ajoutés ou corrigés, sans toucher au code testé |
+| `docs` | de la documentation ou des règles |
+| `chore` | outillage, dépendances, configuration, échafaudage |
+| `perf` | une optimisation mesurée |
+| `ci` | l'intégration continue |
+
+### Scopes
+
+Liste fermée elle aussi. Un scope inventé au cas par cas rend le filtrage inutilisable, ce qui vide la convention de son intérêt.
+
+| Scope | Périmètre |
+|---|---|
+| `api` | routeurs, schémas, contrats HTTP |
+| `db` | modèles, migrations, contraintes |
+| `catalog` `cart` `order` `auth` | un domaine métier, back ou front |
+| `backend` `frontend` | ce qui traverse une pile entière |
+| `tooling` | `.claude/`, hooks, règles, skills |
+| `ci` | workflows GitHub Actions |
+| `docker` | images et composition |
+
+Le scope est **obligatoire**. Si aucun ne convient, c'est le signe que le commit mélange deux intentions : le découper.
+
+Le message dit **ce que fait le commit**, pas ce que le développeur a fait.
 
 Quand le *pourquoi* n'est pas évident à la lecture du diff, ajouter un corps de message qui l'explique. Sinon, une ligne suffit.
 

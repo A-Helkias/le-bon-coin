@@ -24,7 +24,7 @@ Une tâche n'est pas terminée parce que le code est écrit. Elle est terminée 
 
 - Une branche par fonctionnalité, nommée en anglais : `feat/product-catalog`, `fix/cart-total`.
 - Jamais de commit direct sur `main`.
-- Messages de commit en français, à l'impératif : « ajoute le endpoint de détail produit ».
+- Messages de commit au format Conventional Commits, `type(scope): description`, la description en français à l'impératif : « feat(api): ajoute le endpoint de détail produit ». Les types et scopes admis sont listés dans `.claude/agents/gitops.md`, et la liste est fermée.
 - Ne commite et ne pousse que si on te le demande explicitement.
 
 ## Honnêteté du rapport

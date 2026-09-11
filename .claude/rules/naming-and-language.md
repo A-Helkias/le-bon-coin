@@ -19,6 +19,7 @@ Cette règle prime sur toutes les autres. Elle s'applique à chaque fichier cré
 | Commentaires de code et docstrings | `# Prices are stored in cents to avoid float rounding.` |
 | Messages de log techniques | `logger.info("Order %s confirmed", order_id)` |
 | Noms de tests | `test_create_product_rejects_duplicate_sku` |
+| Type et scope d'un message de commit | `feat(api)`, `fix(cart)`, `chore(tooling)` |
 
 ### 1.2 En français
 
@@ -26,7 +27,7 @@ Cette règle prime sur toutes les autres. Elle s'applique à chaque fichier cré
 |---|---|
 | Texte affiché à l'utilisateur | « Ajouter au panier », « Votre panier est vide » |
 | Messages d'erreur remontés à l'interface | « Ce produit n'est plus disponible. » |
-| Messages de commit | « ajoute le endpoint de détail produit » |
+| Description d'un message de commit | `feat(api):` « ajoute le endpoint de détail produit » |
 | Documentation destinée à l'équipe | `README.md`, `docs/` |
 | Contenu des fichiers `.claude/` (prose) | ces règles, les skills, les commands |
 
