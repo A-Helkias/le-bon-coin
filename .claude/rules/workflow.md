@@ -27,6 +27,10 @@ Une tâche n'est pas terminée parce que le code est écrit. Elle est terminée 
 - Jamais de commit direct sur `main` ni sur `dev`.
 - Une branche de travail rejoint `dev` **par une pull request**, jamais autrement : c'est là qu'ont lieu la relecture et la CI.
 - `dev` est promue vers `main` par une pull request de promotion, sur un état déjà éprouvé en dev. Aucune branche de travail ne vise `main` directement.
+- **Stratégies de fusion** : squash vers `dev`, merge commit vers `main`. Un squash sur la promotion ferait diverger les deux branches et mettrait chaque promotion suivante en conflit.
+- **Pas de branche `hotfix/`.** Un correctif urgent passe par `dev` comme le reste — ce qui n'est tenable qu'à une condition : **`dev` reste livrable en permanence**. Un travail long reste sur sa branche ou derrière un drapeau de fonctionnalité, jamais en attente dans `dev`.
+- La **version est calculée** depuis les messages de commit par `semantic-release`, qui pose le tag sur `main` après chaque promotion : `feat` incrémente le mineur, `fix` et `perf` le correctif, `BREAKING CHANGE` le majeur. Une promotion qui ne contient que du `chore`, `docs`, `ci`, `test` ou `refactor` ne produit **aucune release**.
+- Le **tag git fait foi** : les numéros de version dans `backend/pyproject.toml` et `frontend/package.json` ne sont pas synchronisés. Le changelog est publié en GitHub Release, pas dans un fichier du dépôt.
 - Messages de commit au format Conventional Commits, `type(scope): description`, la description en français à l'impératif : « feat(api): ajoute le endpoint de détail produit ». Les types et scopes admis sont listés dans `.claude/agents/gitops.md`, et la liste est fermée.
 - Ne commite et ne pousse que si on te le demande explicitement.
 
