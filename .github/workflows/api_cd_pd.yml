@@ -11,8 +11,6 @@ on:
   workflow_dispatch:
 
 env:
-  REGION: europe-west1
-  SERVICE: le-bon-coin-prod
   TAG_PREFIX: prod
 
 jobs:
@@ -74,37 +72,35 @@ jobs:
           npx tsc --noEmit
           npx vitest run
 
-  # --- Déploiement -----------------------------------------------------------
+  # --- Build et publication de l'image ---------------------------------------
 
-  deploy:
+  build:
     needs: check
     runs-on: ubuntu-latest
 
-    environment:
-      name: production
-      url: ${{ steps.deployed.outputs.url }}
-
     permissions:
       contents: read
+      packages: write
+
+    outputs:
+      image: ${{ steps.tags.outputs.image }}
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Tags de l'image
+        id: tags
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          BASE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${SERVICE}/api"
-          echo "IMAGE=${BASE}:${TAG_PREFIX}-${SHORT_SHA}" >> "$GITHUB_ENV"
+          BASE="ghcr.io/$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')/api"
+          echo "image=${BASE}:${TAG_PREFIX}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=${BASE}:${TAG_PREFIX}-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
           echo "IMAGE_MOVING=${BASE}:${TAG_PREFIX}" >> "$GITHUB_ENV"
 
-      - uses: google-github-actions/auth@v2
+      - uses: docker/login-action@v3
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - uses: google-github-actions/setup-gcloud@v2
-
-      - name: Authentifier Docker
-        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Construire et pousser
         run: |
@@ -112,13 +108,51 @@ jobs:
           docker push "$IMAGE"
           docker push "$IMAGE_MOVING"
 
-      - name: Déployer sur Cloud Run
-        id: deployed
+  # --- Déploiement -----------------------------------------------------------
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: ${{ vars.SERVICE_URL }}
+
+    steps:
+      - name: Déclencher le déploiement
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+          IMAGE: ${{ needs.build.outputs.image }}
         run: |
-          gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --quiet
-          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')
-          echo "url=${URL}" >> "$GITHUB_OUTPUT"
-          echo "URL=${URL}" >> "$GITHUB_ENV"
+          DEPLOY_ID=$(curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"imageUrl\":\"${IMAGE}\"}" \
+            "https://api.render.com/v1/services/${SERVICE_ID}/deploys" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          echo "DEPLOY_ID=${DEPLOY_ID}" >> "$GITHUB_ENV"
+          echo "Déploiement ${DEPLOY_ID} lancé pour ${IMAGE}"
+
+      - name: Attendre la mise en ligne
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+        run: |
+          for _ in $(seq 40); do
+            STATUS=$(curl --fail --silent \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services/${SERVICE_ID}/deploys/${DEPLOY_ID}" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+            echo "statut : ${STATUS}"
+            case "$STATUS" in
+              live) exit 0 ;;
+              build_failed|update_failed|canceled|pre_deploy_failed)
+                echo "Déploiement en échec : ${STATUS}" >&2; exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "Délai dépassé" >&2; exit 1
 
       - name: Vérifier le service
-        run: curl --fail --retry 5 --retry-delay 5 --retry-all-errors "${URL}/health"
+        run: curl --fail --retry 5 --retry-delay 10 --retry-all-errors "${{ vars.SERVICE_URL }}/health"

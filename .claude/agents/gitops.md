@@ -120,6 +120,7 @@ Liste fermée elle aussi. Un scope inventé au cas par cas rend le filtrage inut
 | `tooling` | `.claude/`, hooks, règles, skills |
 | `ci` | workflows GitHub Actions |
 | `docker` | images et composition |
+| `iac` | Terraform et provisionnement d'infrastructure |
 
 Le scope est **obligatoire**. Si aucun ne convient, c'est le signe que le commit mélange deux intentions : le découper.
 
