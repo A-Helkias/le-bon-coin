@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { server } from '../../mocks/server'
 import ProductPage from '../../pages/ProductPage'
-import { aProduct, renderScreen } from './testing'
+import { aProduct, renderScreen } from '../../testing'
 
 const API = 'http://localhost:8000'
 const product = aProduct()
@@ -17,7 +17,7 @@ describe('ProductPage', () => {
       http.get(`${API}/products/:id`, () => HttpResponse.json(product)),
     )
 
-    renderScreen(<ProductPage />, route)
+    renderScreen(<ProductPage />, route, '/produits/:productId')
 
     expect(
       await screen.findByRole('heading', { name: product.name }),
@@ -43,7 +43,7 @@ describe('ProductPage', () => {
       ),
     )
 
-    renderScreen(<ProductPage />, route)
+    renderScreen(<ProductPage />, route, '/produits/:productId')
 
     expect(
       await screen.findByText('Cette pièce n’existe pas.'),
@@ -67,7 +67,7 @@ describe('ProductPage', () => {
       ),
     )
 
-    renderScreen(<ProductPage />, route)
+    renderScreen(<ProductPage />, route, '/produits/:productId')
     await userEvent.click(
       await screen.findByRole('button', { name: 'Ajouter au panier' }),
     )
@@ -82,7 +82,7 @@ describe('ProductPage', () => {
       ),
     )
 
-    renderScreen(<ProductPage />, route)
+    renderScreen(<ProductPage />, route, '/produits/:productId')
 
     const button = await screen.findByRole('button', { name: 'Épuisé' })
     expect(button).toBeDisabled()

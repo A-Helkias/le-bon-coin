@@ -44,13 +44,32 @@ variable "image_url" {
   default = "ghcr.io/a-helkias/le-bon-coin/api"
 }
 
+# Le plan gratuit Render n'autorise qu'une seule base par compte. Renseigner
+# cette variable fait réutiliser une base existante au lieu d'en créer une.
+variable "database_url" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+# Tag déployé à la création du service. Ensuite, c'est la CI qui décide.
+variable "image_tag" {
+  type    = string
+  default = ""
+}
+
 locals {
-  name = "le-bon-coin-${var.environment}"
+  name         = "le-bon-coin-${var.environment}"
+  image_tag    = var.image_tag != "" ? var.image_tag : var.environment
+  creates_db   = var.database_url == ""
+  database_url = local.creates_db ? replace(render_postgres.db[0].connection_info.internal_connection_string, "postgresql://", "postgresql+asyncpg://") : var.database_url
 }
 
 # --- Base de données ----------------------------------------------------------
 
 resource "render_postgres" "db" {
+  count = local.creates_db ? 1 : 0
+
   name          = "${local.name}-db"
   plan          = "free"
   region        = var.region
@@ -70,17 +89,13 @@ resource "render_web_service" "app" {
   runtime_source = {
     image = {
       image_url = var.image_url
-      tag       = var.environment
+      tag       = local.image_tag
     }
   }
 
   env_vars = {
     DATABASE_URL = {
-      value = replace(
-        render_postgres.db.connection_info.internal_connection_string,
-        "postgresql://",
-        "postgresql+asyncpg://",
-      )
+      value = local.database_url
     }
     CORS_ORIGINS = {
       value = "[]"

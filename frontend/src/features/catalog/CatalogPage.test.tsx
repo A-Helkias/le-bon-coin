@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { server } from '../../mocks/server'
 import CatalogPage from '../../pages/CatalogPage'
-import { aProduct, renderScreen } from './testing'
+import { aProduct, renderScreen } from '../../testing'
 
 const PRODUCTS_URL = 'http://localhost:8000/products'
 

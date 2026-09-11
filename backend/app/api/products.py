@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import PaginationDep
 from app.core.database import get_db
 from app.schemas.pagination import Page
-from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.schemas.product import ProductCreate, ProductRead, ProductSort, ProductUpdate
 from app.services import product as product_service
 
 router = APIRouter(prefix="/products", tags=["produits"])
@@ -19,6 +19,9 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 async def list_products(
     db: DbDep,
     pagination: PaginationDep,
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    category: Annotated[str | None, Query(max_length=50)] = None,
+    sort: Annotated[ProductSort, Query()] = ProductSort.RECENT,
     include_inactive: Annotated[bool, Query()] = False,
 ) -> Page[ProductRead]:
     products, total = await product_service.list_products(
@@ -26,8 +29,19 @@ async def list_products(
         limit=pagination.limit,
         offset=pagination.offset,
         include_inactive=include_inactive,
+        search=q,
+        category=category,
+        sort=sort,
     )
     return Page(items=[ProductRead.model_validate(p) for p in products], total=total)
+
+
+# Declared before /{product_id}, otherwise FastAPI matches "categories" as a
+# product id and answers 422 instead of listing the aisles.
+@router.get("/categories", response_model=list[str])
+async def list_categories(db: DbDep) -> list[str]:
+    """The aisles the catalogue actually uses, so the interface never invents them."""
+    return list(await product_service.list_categories(db))
 
 
 @router.get("/{product_id}", response_model=ProductRead)

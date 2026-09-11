@@ -17,6 +17,9 @@ class Product(Base, TimestampMixin):
     sku: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, default=None)
+    # Plain indexed text rather than a table: there is no hierarchy, no
+    # translation and no display order to manage yet.
+    category: Mapped[str | None] = mapped_column(String(50), index=True, default=None)
     # Absolute URL of the product photograph, served by whatever host holds the
     # media. Nullable: a product can be listed before it has been shot.
     image_url: Mapped[str | None] = mapped_column(String(500), default=None)

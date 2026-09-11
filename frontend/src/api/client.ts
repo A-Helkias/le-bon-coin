@@ -36,5 +36,11 @@ export async function apiFetch<T>(
     throw new ApiError(detail, response.status)
   }
 
+  // 204 No Content has no body at all: parsing it would reject, and every
+  // DELETE in the API answers 204.
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return (await response.json()) as T
 }
