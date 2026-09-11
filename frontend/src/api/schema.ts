@@ -22,6 +22,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/products/categories': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * List Categories
+     * @description The aisles the catalogue actually uses, so the interface never invents them.
+     */
+    get: operations['list_categories_products_categories_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/products/{product_id}': {
     parameters: {
       query?: never
@@ -348,6 +368,8 @@ export interface components {
       name: string
       /** Description */
       description?: string | null
+      /** Category */
+      category?: string | null
       /** Image Url */
       image_url?: string | null
       /** Price Cents */
@@ -376,6 +398,8 @@ export interface components {
       name: string
       /** Description */
       description: string | null
+      /** Category */
+      category: string | null
       /** Image Url */
       image_url: string | null
       /** Price Cents */
@@ -395,6 +419,12 @@ export interface components {
        */
       updated_at: string
     }
+    /**
+     * ProductSort
+     * @description Catalogue orderings. FastAPI rejects anything else with a 422.
+     * @enum {string}
+     */
+    ProductSort: 'recent' | 'price_asc' | 'price_desc'
     /** ProductUpdate */
     ProductUpdate: {
       /** Sku */
@@ -403,6 +433,8 @@ export interface components {
       name?: string | null
       /** Description */
       description?: string | null
+      /** Category */
+      category?: string | null
       /** Image Url */
       image_url?: string | null
       /** Price Cents */
@@ -437,6 +469,9 @@ export interface operations {
   list_products_products_get: {
     parameters: {
       query?: {
+        q?: string | null
+        category?: string | null
+        sort?: components['schemas']['ProductSort']
         include_inactive?: boolean
         limit?: number
         offset?: number
@@ -496,6 +531,26 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_categories_products_categories_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': string[]
         }
       }
     }
