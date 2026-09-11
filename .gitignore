@@ -39,3 +39,9 @@ htmlcov/
 # Secrets
 *.pem
 *.key
+
+# Terraform (cache local du provider et fichiers d etat)
+iac/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
