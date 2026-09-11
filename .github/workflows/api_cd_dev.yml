@@ -1,0 +1,124 @@
+name: "API deployment in dev"
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker/**"
+      - ".github/workflows/api_cd_dev.yml"
+  workflow_dispatch:
+
+env:
+  REGION: europe-west1
+  SERVICE: le-bon-coin-dev
+  TAG_PREFIX: dev
+
+jobs:
+  # --- Testing ---------------------------------------------------------------
+
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: le_bon_coin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dépendances backend
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Lint, types et tests backend
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/le_bon_coin_test
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run mypy app
+          uv run pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dépendances frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint, types et tests frontend
+        working-directory: frontend
+        run: |
+          npm run lint
+          npx tsc --noEmit
+          npx vitest run
+
+  # --- Déploiement -----------------------------------------------------------
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+
+    environment:
+      name: dev
+      url: ${{ steps.deployed.outputs.url }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tags de l'image
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          BASE="${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${SERVICE}/api"
+          echo "IMAGE=${BASE}:${TAG_PREFIX}-${SHORT_SHA}" >> "$GITHUB_ENV"
+          echo "IMAGE_MOVING=${BASE}:${TAG_PREFIX}" >> "$GITHUB_ENV"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authentifier Docker
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Construire et pousser
+        run: |
+          docker build -f docker/Dockerfile -t "$IMAGE" -t "$IMAGE_MOVING" .
+          docker push "$IMAGE"
+          docker push "$IMAGE_MOVING"
+
+      - name: Déployer sur Cloud Run
+        id: deployed
+        run: |
+          gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --quiet
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "URL=${URL}" >> "$GITHUB_ENV"
+
+      - name: Vérifier le service
+        run: curl --fail --retry 5 --retry-delay 5 --retry-all-errors "${URL}/health"
